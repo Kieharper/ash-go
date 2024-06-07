@@ -2,3 +2,4 @@
 .env
 go.mod
 ash_output/
+ash-go
