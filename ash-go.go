@@ -11,12 +11,10 @@ import (
 	"time"
 )
 
-// This program runs the ASH tool and processes its output to extract and print
 func printBetween(start, end, filename string) {
 	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
+		fmt.Println("Error opening file:-", err)
 	}
 	defer file.Close()
 
@@ -44,7 +42,7 @@ func printBetween(start, end, filename string) {
 	}
 }
 
-func main() {
+func runASH() {
 	// Check if ASH is installed
 	_, err := exec.LookPath("ash")
 	if err != nil {
@@ -62,27 +60,8 @@ func main() {
 		return
 	}
 
-	// Define the patterns to look for
-	patterns := []string{
-		"ERROR: .*",
-		"WARNING: .*",
-		"Code Findings",
-		// "High",
-		// "Medium",
-		// "Low",
-		// Add more patterns here...
-	}
-
-	// Compile the patterns into regular expressions
-	regexps := make([]*regexp.Regexp, len(patterns))
-	for i, pattern := range patterns {
-		regexps[i] = regexp.MustCompile(pattern)
-	}
-
-	// Create a channel to signal the loading goroutine to stop
-	stopChan := make(chan bool)
-
 	// Start a goroutine that prints "..." in a loop until it receives a signal on stopChan
+	stopChan := make(chan struct{})
 	go func() {
 		fmt.Print("Running ASH ")
 		for {
@@ -103,14 +82,36 @@ func main() {
 
 	// Run the ASH tool
 	cmd = exec.Command("ash")
-	err = cmd.Run()
+	err = cmd.Start() // Start the command and immediately return
+	err = cmd.Wait()  // Wait for the command to finish
+	close(stopChan)   // Signal the goroutine to stop printing dots
+	if err != nil {
+		fmt.Println("Error running ASH:", err)
+		return
+	}
+}
 
-	// When the ASH tool is done, send a signal on stopChan to stop the loading goroutine
-	stopChan <- true
+func analyzeFile() {
+	// Define the patterns to look for
+	patterns := []string{
+		"ERROR: .*",
+		"WARNING: .*",
+		"Code Findings",
+		// "High",
+		// "Medium",
+		// "Low",
+		// Add more patterns here...
+	}
+
+	// Compile the patterns into regular expressions
+	regexps := make([]*regexp.Regexp, len(patterns))
+	for i, pattern := range patterns {
+		regexps[i] = regexp.MustCompile(pattern)
+	}
 
 	// Search for the results file again
 	var filePath string
-	err = filepath.Walk("ash_output/", func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk("ash_output/", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -155,53 +156,33 @@ func main() {
 		fmt.Println("Error reading file:", err)
 	}
 
-	// var filePath string
-	err = filepath.Walk("ash_output/", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		if info.Name() == "aggregated_results.txt" {
-			filePath = path
-			return filepath.SkipDir
-		}
-		return nil
-	})
-	if err != nil {
-		fmt.Println("Error searching for file:", err)
-		return
-	}
-
+	// Print specific sections of the output
 	fmt.Println("\n" + "\033[1;31m" + "Git Secrets Output:" + "\033[0m")
-	printBetween(">>>>>> begin git secrets --scan result >>>>>>", "<<<<<< end git secrets --scan result <<<<<<", filePath)
 	time.Sleep(3 * time.Second)
+	printBetween(">>>>>> begin git secrets --scan result >>>>>>", "<<<<<< end git secrets --scan result <<<<<<", filePath)
 
 	fmt.Println("\n" + "\033[1;31m" + "Grype Output:" + "\033[0m")
-	printBetween(">>>>>> Begin Grype output", "<<<<<< End Grype output", filePath)
 	time.Sleep(3 * time.Second)
+	printBetween(">>>>>> Begin Grype output", "<<<<<< End Grype output", filePath)
 
 	fmt.Println("\n" + "\033[1;31m" + "Bandit Output:" + "\033[0m")
-	printBetween(">>>>>> Begin Bandit output", "<<<<<< End Bandit output", filePath)
 	time.Sleep(3 * time.Second)
+	printBetween(">>>>>> Begin Bandit output", "<<<<<< End Bandit output", filePath)
 
 	fmt.Println("\n" + "\033[1;31m" + "Semgrep Output:" + "\033[0m")
-	printBetween(">>>>>> Begin Semgrep output", "<<<<<< End Semgrep output", filePath)
 	time.Sleep(3 * time.Second)
-
-	// fmt.Println("\033[1;31m" + "Syft Output:" + "\033[0m")
-	// printBetween(">>>>>> Begin Syft output", "<<<<<< End Syft output", filePath)
-	// time.Sleep(3 * time.Second)
+	printBetween(">>>>>> Begin Semgrep output", "<<<<<< End Semgrep output", filePath)
 
 	fmt.Println("\n" + "\033[1;31m" + "Checkov Output:" + "\033[0m")
-	printBetween(">>>>>> begin checkov", "<<<<<< end checkov", filePath)
 	time.Sleep(3 * time.Second)
+	printBetween(">>>>>> begin checkov", "<<<<<< end checkov", filePath)
 
 	fmt.Println("\n" + "\033[1;31m" + "npm-audit Output:" + "\033[0m")
-	printBetween(">>>>>> Begin npm audit", "<<<<<< End npm audit", filePath)
 	time.Sleep(3 * time.Second)
+	printBetween(">>>>>> Begin npm audit", "<<<<<< End npm audit", filePath)
+}
 
-	// [KH] Need to add print statements for other tools here...
-
+func main() {
+	runASH()
+	analyzeFile()
 }
