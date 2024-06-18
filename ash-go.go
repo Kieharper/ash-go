@@ -110,7 +110,7 @@ func main() {
 
 	// Search for the results file again
 	var filePath string
-	err = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk("ash_output/", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -154,6 +154,54 @@ func main() {
 	if err := scanner.Err(); err != nil {
 		fmt.Println("Error reading file:", err)
 	}
-	fmt.Println("Grype Output:")
-	printBetween(">>>>>> Begin Grype output", "<<<<<< End Grype output", "./ash_output/aggregated_results.txt") // Need to change so file path doesn't have to be specified.
+
+	// var filePath string
+	err = filepath.Walk("ash_output/", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if info.Name() == "aggregated_results.txt" {
+			filePath = path
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Println("Error searching for file:", err)
+		return
+	}
+
+	fmt.Println("\n" + "\033[1;31m" + "Git Secrets Output:" + "\033[0m")
+	printBetween(">>>>>> begin git secrets --scan result >>>>>>", "<<<<<< end git secrets --scan result <<<<<<", filePath)
+	time.Sleep(3 * time.Second)
+
+	fmt.Println("\n" + "\033[1;31m" + "Grype Output:" + "\033[0m")
+	printBetween(">>>>>> Begin Grype output", "<<<<<< End Grype output", filePath)
+	time.Sleep(3 * time.Second)
+
+	fmt.Println("\n" + "\033[1;31m" + "Bandit Output:" + "\033[0m")
+	printBetween(">>>>>> Begin Bandit output", "<<<<<< End Bandit output", filePath)
+	time.Sleep(3 * time.Second)
+
+	fmt.Println("\n" + "\033[1;31m" + "Semgrep Output:" + "\033[0m")
+	printBetween(">>>>>> Begin Semgrep output", "<<<<<< End Semgrep output", filePath)
+	time.Sleep(3 * time.Second)
+
+	// fmt.Println("\033[1;31m" + "Syft Output:" + "\033[0m")
+	// printBetween(">>>>>> Begin Syft output", "<<<<<< End Syft output", filePath)
+	// time.Sleep(3 * time.Second)
+
+	fmt.Println("\n" + "\033[1;31m" + "Checkov Output:" + "\033[0m")
+	printBetween(">>>>>> begin checkov", "<<<<<< end checkov", filePath)
+	time.Sleep(3 * time.Second)
+
+	fmt.Println("\n" + "\033[1;31m" + "npm-audit Output:" + "\033[0m")
+	printBetween(">>>>>> Begin npm audit", "<<<<<< End npm audit", filePath)
+	time.Sleep(3 * time.Second)
+
+	// [KH] Need to add print statements for other tools here...
+
 }
